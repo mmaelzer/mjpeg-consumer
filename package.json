@@ -1,0 +1,19 @@
+{
+  "name": "mjpeg-consumer",
+  "version": "0.1.0",
+  "description": "a nodejs stream implementation that consumes http mjpeg streams",
+  "main": "index.js",
+  "dependencies": {
+    "buffertools": "~1.1.0"
+  },
+  "devDependencies": {
+    "request": "~2.12.0",
+    "file-on-write": "~0.1.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "",
+  "author": "",
+  "license": "BSD"
+}
