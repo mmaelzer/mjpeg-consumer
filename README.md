@@ -6,7 +6,7 @@ A node.js stream implementation that consumes http mjpeg streams and emits jpegs
 ###Install###
 
 	npm install mjpeg-consumer
-
+  
 ----------------------  
 
 ###Objects###
@@ -17,7 +17,8 @@ Requiring the `mjpeg-consumer` module returns a readable/writable stream impleme
 	var MjpegConsumer = require("mjpeg-consumer");
 	var consumer = new MjpegConsumer();
 
-###Sample Usage###
+----------------------  
+###Usage###
 The `mjpeg-consumer` isn't very useful without a writable pipe to pipe jpegs to. I've built the [file-on-write](https://github.com/mmaelzer/file-on-write) stream to write a file every time `write` is called on it. The below example opens a stream to an IP camera, pipes the results to the `mjpeg-consumer` which processes the stream and emits parsed jpegs to the `file-on-write` writer.
 
 	var request = require("request");
