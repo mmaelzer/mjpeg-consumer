@@ -13,7 +13,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": "",
-  "author": "",
+  "repository": "https://github.com/mmaelzer/mjpeg-consumer",
+  "author": "Mike Maelzer <mmaelzer@gmail.com>",
   "license": "BSD"
 }
