@@ -15,5 +15,6 @@
   },
   "repository": "https://github.com/mmaelzer/mjpeg-consumer",
   "author": "Mike Maelzer <mmaelzer@gmail.com>",
-  "license": "BSD"
+  "license": "BSD",
+  "keywords": ["mjpg", "mjpeg", "motion jpeg", "stream", "http", "ip camera"]
 }
