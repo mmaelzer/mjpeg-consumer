@@ -10,7 +10,7 @@ A node.js stream implementation that consumes http mjpeg streams and emits jpegs
 ----------------------  
 
 ###Objects###
-Requiring the `mjpeg-consumer` module returns a readable/writable stream implementation that takes an http stream of mjpegs and emits jpegs.
+Requiring the `mjpeg-consumer` module returns a readable/writable stream implementation that takes an http mjpeg stream and emits jpegs.
 
 	var MjpegConsumer = require("mjpeg-consumer");
 	var consumer = new MjpegConsumer();
