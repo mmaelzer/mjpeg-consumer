@@ -32,5 +32,5 @@ var writer = new FileOnWrite({
 });
 var consumer = new MjpegConsumer();
 
-request("http://192.168.1.2/videostream.cgi").pipe(consumer).pipe(shedder).pipe(writer);
+request("http://192.168.1.2/videostream.cgi").pipe(consumer).pipe(writer);
 ```
