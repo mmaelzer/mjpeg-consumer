@@ -1,7 +1,7 @@
 {
   "name": "mjpeg-consumer",
-  "version": "0.2.0",
-  "description": "a nodejs stream implementation that consumes http mjpeg streams",
+  "version": "0.3.0",
+  "description": "a stream implementation that consumes http mjpeg streams and emits jpegs as buffers",
   "main": "index.js",
   "dependencies": {
     "buffertools": "~1.1.0"
@@ -9,6 +9,9 @@
   "devDependencies": {
     "request": "~2.12.0",
     "file-on-write": "~0.1.0"
+  },
+  "engines": {
+    "node": ">=0.10.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
