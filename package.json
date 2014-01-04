@@ -1,6 +1,6 @@
 {
   "name": "mjpeg-consumer",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "a stream implementation that consumes http mjpeg streams and emits jpegs as buffers",
   "main": "index.js",
   "dependencies": {
