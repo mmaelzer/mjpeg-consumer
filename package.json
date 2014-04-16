@@ -1,6 +1,6 @@
 {
   "name": "mjpeg-consumer",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "a stream implementation that consumes http mjpeg streams and emits jpegs as buffers",
   "main": "index.js",
   "dependencies": {
@@ -8,7 +8,7 @@
   },
   "devDependencies": {
     "request": "~2.12.0",
-    "file-on-write": "~0.1.0"
+    "file-on-write": "~0.2.0"
   },
   "engines": {
     "node": ">=0.10.0"
@@ -18,6 +18,6 @@
   },
   "repository": "https://github.com/mmaelzer/mjpeg-consumer",
   "author": "Mike Maelzer <mmaelzer@gmail.com>",
-  "license": "BSD",
+  "license": "MIT",
   "keywords": ["mjpg", "mjpeg", "motion jpeg", "stream", "http", "ip camera"]
 }
