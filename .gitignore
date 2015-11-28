@@ -1,4 +1,5 @@
-lib-cov
+.DS_Store
+*-cov.*
 *.seed
 *.log
 *.csv
@@ -6,6 +7,7 @@ lib-cov
 *.out
 *.pid
 *.gz
+*.txt
 
 pids
 logs
