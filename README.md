@@ -2,6 +2,10 @@ mjpeg-consumer
 ==================
   
 A node.js stream implementation that consumes http mjpeg streams and emits jpegs.
+
+[![build status](https://secure.travis-ci.org/mmaelzer/mjpeg-consumer.png)](http://travis-ci.org/mmaelzer/mjpeg-consumer)
+[![Coverage Status](https://coveralls.io/repos/mmaelzer/mjpeg-consumer/badge.svg?branch=master&service=github)](https://coveralls.io/github/mmaelzer/mjpeg-consumer?branch=master)
+
   
 ### Install
 
