@@ -1,7 +1,7 @@
 mjpeg-consumer
 ==================
   
-A node.js stream implementation that consumes http mjpeg streams and emits jpegs.
+A node.js transform stream implementation that consumes http multipart mjpeg streams and emits jpegs.
 
 [![build status](https://secure.travis-ci.org/mmaelzer/mjpeg-consumer.png)](http://travis-ci.org/mmaelzer/mjpeg-consumer)
 [![Coverage Status](https://coveralls.io/repos/mmaelzer/mjpeg-consumer/badge.svg?branch=master&service=github)](https://coveralls.io/github/mmaelzer/mjpeg-consumer?branch=master)
@@ -9,18 +9,10 @@ A node.js stream implementation that consumes http mjpeg streams and emits jpegs
   
 ### Install
 
-	npm install mjpeg-consumer
-  
-----------------------  
-
-### Objects
-Requiring the `mjpeg-consumer` module returns a readable/writable stream implementation that takes an http mjpeg stream and emits jpegs.
-
-```javascript
-var MjpegConsumer = require("mjpeg-consumer");
-var consumer = new MjpegConsumer();
+```bash
+npm install mjpeg-consumer
 ```
-
+  
 ----------------------  
 ### Usage
 The `mjpeg-consumer` isn't very useful without a writable pipe to pipe jpegs to. I've built the [file-on-write](https://github.com/mmaelzer/file-on-write) stream to write a file every time `write` is called on it. The below example opens a stream to an IP camera, pipes the results to the `mjpeg-consumer` which processes the stream and emits parsed jpegs to the `file-on-write` writer.
@@ -36,5 +28,5 @@ var writer = new FileOnWrite({
 });
 var consumer = new MjpegConsumer();
 
-request("http://192.168.1.2/videostream.cgi").pipe(consumer).pipe(writer);
+request("http://mjpeg.sanford.io/count.mjpeg").pipe(consumer).pipe(writer);
 ```
