@@ -11,6 +11,7 @@
     "buffertools": "~2.1.0"
   },
   "devDependencies": {
+    "coveralls": "^2.11.4",
     "file-on-write": "~0.2.0",
     "jscoverage": "^0.6.0",
     "nodeunit": "^0.9.1",
