@@ -64,3 +64,34 @@ module.exports.testConsumer = function(t) {
   };
   req.pipe(consumer).pipe(ws);
 };
+
+module.exports.testConstructor = function(t) {
+  var consumer = MjpegConsumer();
+  t.ok(consumer instanceof MjpegConsumer);
+  t.done();
+};
+
+module.exports.testInitFrame = function(t) {
+  var consumer = new MjpegConsumer();
+  var buf = new Buffer("Content-Length: " + IMG.length + "\n\n");
+  var fhalfImg = new Buffer(500);
+  var shalfImg = new Buffer(IMG.length - 500);
+
+  IMG.copy(fhalfImg, 0, 0, fhalfImg.length);
+  IMG.copy(shalfImg, 0, 500);
+
+  var img = Buffer.concat([buf, fhalfImg]);
+
+  var ws = new Writable();
+  ws._write = function (chunk, enc, next) {
+    t.equal(chunk.length, IMG.length);
+    t.deepEqual(chunk, IMG);
+    t.done();
+    next();
+  };
+
+  consumer.pipe(ws);
+
+  consumer.write(img);
+  consumer.write(shalfImg);
+};
