@@ -96,8 +96,8 @@ module.exports.testInitFrame = function(t) {
   consumer.write(shalfImg);
 };
 
-var chunk_headers = new Buffer('Content-Type: image/jpeg\nContent-Length: '+ IMG.length + '\n\n');
-var chunk_boundary = new Buffer(boundary + '\n');
+var chunkHeaders = new Buffer('Content-Type: image/jpeg\nContent-Length: '+ IMG.length + '\n\n');
+var chunkBoundary = new Buffer(boundary + '\n');
 
 function getTestConsumer(t) {
   var consumer = new MjpegConsumer();
@@ -113,30 +113,30 @@ function getTestConsumer(t) {
 module.exports.testOneChunk = function(t) {
   var consumer = getTestConsumer(t);
 
-  var all = Buffer.concat([chunk_boundary, chunk_headers, IMG]);
+  var all = Buffer.concat([chunkBoundary, chunkHeaders, IMG]);
   consumer.end(all);
 };
 
 module.exports.testTwoChunksFirst = function(t) {
   var consumer = getTestConsumer(t);
 
-  var boundary_and_headers = Buffer.concat([chunk_boundary, chunk_headers]);
-  consumer.write(boundary_and_headers);
+  var boundaryAndHeaders = Buffer.concat([chunkBoundary, chunkHeaders]);
+  consumer.write(boundaryAndHeaders);
   consumer.end(IMG);
 };
 
 module.exports.testTwoChunksSecond = function(t) {
   var consumer = getTestConsumer(t);
 
-  var headers_and_image = Buffer.concat([chunk_headers, IMG]);
-  consumer.write(chunk_boundary);
-  consumer.end(headers_and_image);
+  var headersAndImage = Buffer.concat([chunkHeaders, IMG]);
+  consumer.write(chunkBoundary);
+  consumer.end(headersAndImage);
 };
 
 module.exports.testThreeChunks = function(t) {
   var consumer = getTestConsumer(t);
 
-  consumer.write(chunk_boundary);
-  consumer.write(chunk_headers);
+  consumer.write(chunkBoundary);
+  consumer.write(chunkHeaders);
   consumer.end(IMG);
 };
