@@ -82,18 +82,37 @@ module.exports.testInitFrame = function(t) {
 
   var img = Buffer.concat([buf, fhalfImg]);
 
-  var ws = new Writable();
-  ws._write = function (chunk, enc, next) {
+  consumer.once('data', function(chunk) {
     t.equal(chunk.length, IMG.length);
     t.deepEqual(chunk, IMG);
     t.done();
-    next();
-  };
-
-  consumer.pipe(ws);
+  });
 
   consumer.write(img);
-  consumer.write(shalfImg);
+  consumer.end(shalfImg);
+};
+
+
+module.exports.testSplitImage = function(t) {
+  var consumer = new MjpegConsumer();
+  var buf = new Buffer("Content-Length: " + IMG.length + "\n\n");
+  var fhalfImg = new Buffer(500);
+  var shalfImg = new Buffer(IMG.length - 500);
+
+  IMG.copy(fhalfImg, 0, 0, fhalfImg.length);
+  IMG.copy(shalfImg, 0, 500);
+
+  var img = Buffer.concat([buf, fhalfImg]);
+  var imgCount = 0;
+  consumer.on('data', function(chunk) {
+    if (++imgCount === 2) {
+      t.deepEqual(chunk, IMG);
+      t.done();
+    }
+  });
+  consumer.write(img);
+  consumer.write(Buffer.concat([shalfImg, img]));
+  consumer.end(shalfImg);
 };
 
 var chunkHeaders = new Buffer('Content-Type: image/jpeg\nContent-Length: '+ IMG.length + '\n\n');
