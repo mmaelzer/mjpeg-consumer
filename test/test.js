@@ -159,3 +159,19 @@ module.exports.testThreeChunks = function(t) {
   consumer.write(chunkHeaders);
   consumer.end(IMG);
 };
+
+module.exports.testOldBuffer = function(t) {
+  var consumer = getTestConsumer(t);
+  consumer.oldBufferType = true;
+  consumer.write(chunkBoundary);
+  consumer.write(chunkHeaders);
+  consumer.end(IMG);
+};
+
+module.exports.testNewBuffer = function(t) {
+  var consumer = getTestConsumer(t);
+  consumer.oldBufferType = false;
+  consumer.write(chunkBoundary);
+  consumer.write(chunkHeaders);
+  consumer.end(IMG);
+};
