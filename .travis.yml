@@ -1,5 +1,5 @@
 language: node_js
 node_js:
-  - 0.10
+  - 8.11.2
 after_script:
   - npm run coveralls
