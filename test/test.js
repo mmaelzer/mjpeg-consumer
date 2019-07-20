@@ -73,9 +73,9 @@ module.exports.testConstructor = function(t) {
 
 module.exports.testInitFrame = function(t) {
   var consumer = new MjpegConsumer();
-  var buf = new Buffer("Content-Length: " + IMG.length + "\n\n");
-  var fhalfImg = new Buffer(500);
-  var shalfImg = new Buffer(IMG.length - 500);
+  var buf = Buffer.from("Content-Length: " + IMG.length + "\n\n");
+  var fhalfImg = Buffer.alloc(500);
+  var shalfImg = Buffer.alloc(IMG.length - 500);
 
   IMG.copy(fhalfImg, 0, 0, fhalfImg.length);
   IMG.copy(shalfImg, 0, 500);
@@ -95,9 +95,9 @@ module.exports.testInitFrame = function(t) {
 
 module.exports.testSplitImage = function(t) {
   var consumer = new MjpegConsumer();
-  var buf = new Buffer("Content-Length: " + IMG.length + "\n\n");
-  var fhalfImg = new Buffer(500);
-  var shalfImg = new Buffer(IMG.length - 500);
+  var buf = Buffer.from("Content-Length: " + IMG.length + "\n\n");
+  var fhalfImg = Buffer.alloc(500);
+  var shalfImg = Buffer.alloc(IMG.length - 500);
 
   IMG.copy(fhalfImg, 0, 0, fhalfImg.length);
   IMG.copy(shalfImg, 0, 500);
@@ -115,8 +115,8 @@ module.exports.testSplitImage = function(t) {
   consumer.end(shalfImg);
 };
 
-var chunkHeaders = new Buffer('Content-Type: image/jpeg\nContent-Length: '+ IMG.length + '\n\n');
-var chunkBoundary = new Buffer(boundary + '\n');
+var chunkHeaders = Buffer.from('Content-Type: image/jpeg\nContent-Length: '+ IMG.length + '\n\n');
+var chunkBoundary = Buffer.from(boundary + '\n');
 
 function getTestConsumer(t) {
   var consumer = new MjpegConsumer();
