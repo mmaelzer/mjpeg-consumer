@@ -13,6 +13,9 @@ var IMG = fs.readFileSync(path.join(__dirname, 'img.jpg'));
 var chunkHeaders = Buffer.from('Content-Type: image/jpeg\nContent-Length: ' + IMG.length + '\n\n');
 var chunkBoundary = Buffer.from(boundary + '\n');
 
+var soi = Buffer.from([0xff, 0xd8]);
+var eoi = Buffer.from([0xff, 0xd9]);
+
 /**
  * Serves an endless multipart stream, one frame every 50ms. Listens on an
  * ephemeral port so nothing collides with a port already in use.
@@ -164,4 +167,96 @@ splits.forEach(function(split) {
     assert.strictEqual(consumer.bytesWritten, IMG.length);
     assert.deepStrictEqual(frame, IMG);
   });
+});
+
+/** Resolves with the error the consumer fails with. */
+function failure(consumer) {
+  return new Promise(function(resolve) {
+    consumer.on('error', resolve);
+  });
+}
+
+test('rejects a frame larger than maxFrameBytes', async function() {
+  var consumer = new MjpegConsumer();
+  var failed = failure(consumer);
+
+  // No allocation should be attempted for this at all.
+  consumer.write(Buffer.from('Content-Length: 2000000000\n\n'));
+
+  var err = await failed;
+  assert.strictEqual(err.code, 'ERR_FRAME_TOO_LARGE');
+  assert.match(err.message, /2000000000 bytes/);
+  assert.strictEqual(consumer.buffer, null);
+});
+
+test('honours an explicit maxFrameBytes', async function() {
+  // Below the size of the test fixture, so the limit is what rejects it.
+  var consumer = new MjpegConsumer({ maxFrameBytes: 512 });
+  var failed = failure(consumer);
+
+  consumer.write(Buffer.concat([chunkBoundary, chunkHeaders, IMG]));
+
+  var err = await failed;
+  assert.strictEqual(err.code, 'ERR_FRAME_TOO_LARGE');
+});
+
+test('accepts a frame at exactly maxFrameBytes', async function() {
+  var consumer = new MjpegConsumer({ maxFrameBytes: IMG.length });
+  var frames = collect(consumer, 1);
+
+  consumer.end(Buffer.concat([chunkBoundary, chunkHeaders, IMG]));
+
+  assert.deepStrictEqual((await frames)[0], IMG);
+});
+
+/**
+ * Compressed image data will eventually contain the bytes "Content-Length:" by
+ * chance. Acting on such a match used to discard the frame in progress and
+ * resize the buffer to whatever number followed.
+ */
+test('ignores a Content-Length that appears inside payload data', async function() {
+  var lie = Buffer.from('Content-Length: 999999\n\n');
+  var payload = Buffer.concat([
+    soi,
+    Buffer.alloc(600, 0x41),
+    lie,
+    Buffer.alloc(600, 0x41),
+    eoi
+  ]);
+  var header = Buffer.from('Content-Length: ' + payload.length + '\n\n');
+
+  var consumer = new MjpegConsumer();
+  var frames = collect(consumer, 1);
+
+  consumer.write(Buffer.concat([header, payload.subarray(0, 300)]));
+  // The lie sits at offset 602, wholly inside this middle chunk, which is pure
+  // payload -- the frame is not complete, so the old code resized here.
+  consumer.write(payload.subarray(300, 700));
+  consumer.end(payload.subarray(700));
+
+  var frame = (await frames)[0];
+  assert.strictEqual(frame.length, payload.length);
+  assert.deepStrictEqual(frame, payload);
+});
+
+/**
+ * Buffer.copy clamps a write that would overrun, but bytesWritten used to keep
+ * counting, stepping straight past an exact-equality completion check. With no
+ * end-of-image marker to fall back on, the stream simply stopped emitting.
+ */
+test('emits a frame whose payload overruns its declared length', async function() {
+  var declared = 500;
+  var header = Buffer.from('Content-Length: ' + declared + '\n\n');
+  var body = Buffer.concat([soi, Buffer.alloc(declared - soi.length, 0x41)]);
+
+  var consumer = new MjpegConsumer();
+  var frames = collect(consumer, 1);
+
+  consumer.write(Buffer.concat([header, body.subarray(0, 200)]));
+  // 400 more bytes with only 300 of room left, and no end-of-image marker.
+  consumer.end(Buffer.alloc(400, 0x41));
+
+  var frame = (await frames)[0];
+  assert.strictEqual(frame.length, declared);
+  assert.strictEqual(consumer.bytesWritten, declared);
 });
