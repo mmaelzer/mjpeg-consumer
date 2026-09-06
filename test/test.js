@@ -1,177 +1,167 @@
-var MjpegConsumer = (function(coverage) {
-  return coverage
-    ? require('../lib/mjpeg-consumer-cov')
-    : require('../lib/mjpeg-consumer');
-})(process.env.USE_COVERAGE);
+var test = require('node:test');
+var assert = require('node:assert');
+var http = require('node:http');
+var fs = require('node:fs');
+var path = require('node:path');
+var Readable = require('node:stream').Readable;
 
-var http = require('http');
-var fs = require('fs');
-var request = require('request');
+var MjpegConsumer = require('../lib/mjpeg-consumer');
 
 var boundary = '--boundandrebound';
-var IMG = fs.readFileSync(__dirname + '/img.jpg');
-var Writable = require('stream').Writable;
+var IMG = fs.readFileSync(path.join(__dirname, 'img.jpg'));
 
-function startServer(port) {
+var chunkHeaders = Buffer.from('Content-Type: image/jpeg\nContent-Length: ' + IMG.length + '\n\n');
+var chunkBoundary = Buffer.from(boundary + '\n');
+
+/**
+ * Serves an endless multipart stream, one frame every 50ms. Listens on an
+ * ephemeral port so nothing collides with a port already in use.
+ */
+function startServer() {
   var run = true;
+
   var server = http.createServer(function(req, res) {
-    res.writeHead(200, {'Content-Type': 'multipart/x-mixed-replace; boundary=' + boundary});
+    res.writeHead(200, {
+      'Content-Type': 'multipart/x-mixed-replace; boundary=' + boundary
+    });
 
     (function writeFrame() {
       setTimeout(function() {
-        res.write(boundary + '\nContent-Type: image/jpeg\nContent-Length: '+ IMG.length + '\n\n');
+        if (!run || res.writableEnded) return;
+        res.write(boundary + '\nContent-Type: image/jpeg\nContent-Length: ' + IMG.length + '\n\n');
         res.write(IMG);
-
-        if (run) writeFrame();
-      }, 500);
+        writeFrame();
+      }, 50);
     })();
 
     res.on('close', function() {
       run = false;
     });
-
   });
-  server.listen(port);
-  return {
-    server: server,
-    stop: function() {
-      server.close();
-      run = false;
-    }
-  };
+
+  return new Promise(function(resolve) {
+    server.listen(0, '127.0.0.1', function() {
+      resolve({
+        port: server.address().port,
+        stop: function() {
+          run = false;
+          server.closeAllConnections();
+          return new Promise(function(done) { server.close(function() { done(); }); });
+        }
+      });
+    });
+  });
 }
 
-module.exports.testConsumer = function(t) {
-  var port = 1234;
-  var server = startServer(port);
+/** Resolves with the first `count` frames the consumer emits. */
+function collect(consumer, count) {
+  return new Promise(function(resolve, reject) {
+    var frames = [];
+    consumer.on('data', function(chunk) {
+      frames.push(chunk);
+      if (frames.length === count) resolve(frames);
+    });
+    consumer.on('error', reject);
+  });
+}
 
-  var consumer = new MjpegConsumer();
-  var req = request('http://127.0.0.1:' + port);
+test('consumes an http mjpeg stream', async function() {
+  var server = await startServer();
+  var controller = new AbortController();
+  var body = null;
 
-  var ws = new Writable();
-  var iterations = 0;
-  ws._write = function (chunk, enc, next) {
-    t.equal(chunk.length, IMG.length);
-    t.deepEqual(chunk, IMG);
-    // Do this 3 times before stopping.
-    // You know. For science.
-    if (iterations++ === 2) {
-      req.abort();
-      server.stop();
-      t.done();
+  try {
+    var res = await fetch('http://127.0.0.1:' + server.port, {
+      signal: controller.signal
+    });
+
+    var consumer = new MjpegConsumer();
+    var frames = collect(consumer, 3);
+
+    body = Readable.fromWeb(res.body);
+    // The stream is endless, so the test ends by aborting mid-response. That
+    // surfaces on the body as an AbortError which nothing else will claim;
+    // without this handler it escapes as an uncaught exception.
+    body.on('error', function(err) {
+      if (err.name !== 'AbortError') throw err;
+    });
+    body.pipe(consumer);
+
+    // Three times. You know. For science.
+    for (var frame of await frames) {
+      assert.strictEqual(frame.length, IMG.length);
+      assert.deepStrictEqual(frame, IMG);
     }
-    next();
-  };
-  req.pipe(consumer).pipe(ws);
-};
+  } finally {
+    controller.abort();
+    if (body) body.destroy();
+    await server.stop();
+  }
+});
 
-module.exports.testConstructor = function(t) {
+test('constructs without new', function() {
   var consumer = MjpegConsumer();
-  t.ok(consumer instanceof MjpegConsumer);
-  t.done();
-};
+  assert.ok(consumer instanceof MjpegConsumer);
+});
 
-module.exports.testInitFrame = function(t) {
+test('reassembles a frame split across two writes', async function() {
   var consumer = new MjpegConsumer();
-  var buf = Buffer.from("Content-Length: " + IMG.length + "\n\n");
-  var fhalfImg = Buffer.alloc(500);
-  var shalfImg = Buffer.alloc(IMG.length - 500);
+  var frames = collect(consumer, 1);
 
-  IMG.copy(fhalfImg, 0, 0, fhalfImg.length);
-  IMG.copy(shalfImg, 0, 500);
+  var header = Buffer.from('Content-Length: ' + IMG.length + '\n\n');
 
-  var img = Buffer.concat([buf, fhalfImg]);
+  consumer.write(Buffer.concat([header, IMG.subarray(0, 500)]));
+  consumer.end(IMG.subarray(500));
 
-  consumer.once('data', function(chunk) {
-    t.equal(chunk.length, IMG.length);
-    t.deepEqual(chunk, IMG);
-    t.done();
-  });
+  var frame = (await frames)[0];
+  assert.strictEqual(frame.length, IMG.length);
+  assert.deepStrictEqual(frame, IMG);
+});
 
-  consumer.write(img);
-  consumer.end(shalfImg);
-};
-
-
-module.exports.testSplitImage = function(t) {
+test('emits a second frame when a write spans a boundary', async function() {
   var consumer = new MjpegConsumer();
-  var buf = Buffer.from("Content-Length: " + IMG.length + "\n\n");
-  var fhalfImg = Buffer.alloc(500);
-  var shalfImg = Buffer.alloc(IMG.length - 500);
+  var frames = collect(consumer, 2);
 
-  IMG.copy(fhalfImg, 0, 0, fhalfImg.length);
-  IMG.copy(shalfImg, 0, 500);
+  var header = Buffer.from('Content-Length: ' + IMG.length + '\n\n');
+  var headerAndFirstHalf = Buffer.concat([header, IMG.subarray(0, 500)]);
+  var secondHalf = IMG.subarray(500);
 
-  var img = Buffer.concat([buf, fhalfImg]);
-  var imgCount = 0;
-  consumer.on('data', function(chunk) {
-    if (++imgCount === 2) {
-      t.deepEqual(chunk, IMG);
-      t.done();
-    }
+  consumer.write(headerAndFirstHalf);
+  consumer.write(Buffer.concat([secondHalf, headerAndFirstHalf]));
+  consumer.end(secondHalf);
+
+  assert.deepStrictEqual((await frames)[1], IMG);
+});
+
+/**
+ * The same frame delivered across every combination of write boundaries. All
+ * four must produce one identical frame — where a chunk ends is an artifact of
+ * the socket, not of the format.
+ */
+var splits = [
+  ['one chunk', [[chunkBoundary, chunkHeaders, IMG]]],
+  ['two chunks, split after the headers', [[chunkBoundary, chunkHeaders], [IMG]]],
+  ['two chunks, split after the boundary', [[chunkBoundary], [chunkHeaders, IMG]]],
+  ['three chunks', [[chunkBoundary], [chunkHeaders], [IMG]]]
+];
+
+splits.forEach(function(split) {
+  var name = split[0];
+  var writes = split[1];
+
+  test('parses a frame delivered as ' + name, async function() {
+    var consumer = new MjpegConsumer();
+    var frames = collect(consumer, 1);
+
+    writes.forEach(function(parts, i) {
+      var buf = Buffer.concat(parts);
+      if (i === writes.length - 1) consumer.end(buf);
+      else consumer.write(buf);
+    });
+
+    var frame = (await frames)[0];
+    assert.strictEqual(frame.length, IMG.length);
+    assert.strictEqual(consumer.bytesWritten, IMG.length);
+    assert.deepStrictEqual(frame, IMG);
   });
-  consumer.write(img);
-  consumer.write(Buffer.concat([shalfImg, img]));
-  consumer.end(shalfImg);
-};
-
-var chunkHeaders = Buffer.from('Content-Type: image/jpeg\nContent-Length: '+ IMG.length + '\n\n');
-var chunkBoundary = Buffer.from(boundary + '\n');
-
-function getTestConsumer(t) {
-  var consumer = new MjpegConsumer();
-  consumer.once('data', function (chunk) {
-    t.equal(chunk.length, IMG.length);
-    t.equal(this.bytesWritten, IMG.length);
-    t.deepEqual(chunk, IMG);
-    t.done();
-  });
-  return consumer;
-}
-
-module.exports.testOneChunk = function(t) {
-  var consumer = getTestConsumer(t);
-
-  var all = Buffer.concat([chunkBoundary, chunkHeaders, IMG]);
-  consumer.end(all);
-};
-
-module.exports.testTwoChunksFirst = function(t) {
-  var consumer = getTestConsumer(t);
-
-  var boundaryAndHeaders = Buffer.concat([chunkBoundary, chunkHeaders]);
-  consumer.write(boundaryAndHeaders);
-  consumer.end(IMG);
-};
-
-module.exports.testTwoChunksSecond = function(t) {
-  var consumer = getTestConsumer(t);
-
-  var headersAndImage = Buffer.concat([chunkHeaders, IMG]);
-  consumer.write(chunkBoundary);
-  consumer.end(headersAndImage);
-};
-
-module.exports.testThreeChunks = function(t) {
-  var consumer = getTestConsumer(t);
-
-  consumer.write(chunkBoundary);
-  consumer.write(chunkHeaders);
-  consumer.end(IMG);
-};
-
-module.exports.testOldBuffer = function(t) {
-  var consumer = getTestConsumer(t);
-  consumer.oldBufferType = true;
-  consumer.write(chunkBoundary);
-  consumer.write(chunkHeaders);
-  consumer.end(IMG);
-};
-
-module.exports.testNewBuffer = function(t) {
-  var consumer = getTestConsumer(t);
-  consumer.oldBufferType = false;
-  consumer.write(chunkBoundary);
-  consumer.write(chunkHeaders);
-  consumer.end(IMG);
-};
+});

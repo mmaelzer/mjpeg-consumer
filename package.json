@@ -4,18 +4,10 @@
   "description": "a stream implementation that consumes http mjpeg streams and emits jpegs as buffers",
   "main": "index.js",
   "scripts": {
-    "test": "node_modules/.bin/nodeunit test/test.js",
-    "coveralls": "node_modules/.bin/jscoverage lib/mjpeg-consumer.js && USE_COVERAGE=1 node_modules/.bin/nodeunit --reporter=lcov test/test.js | node_modules/.bin/coveralls"
-  },
-  "devDependencies": {
-    "coveralls": "^2.13.3",
-    "file-on-write": "~0.2.0",
-    "jscoverage": "^0.6.0",
-    "nodeunit": "^0.11.3",
-    "request": "^2.88.0"
+    "test": "node --test test/test.js"
   },
   "engines": {
-    "node": ">=8.0.0"
+    "node": ">=18"
   },
   "repository": "https://github.com/mmaelzer/mjpeg-consumer",
   "author": "Mike Maelzer <mmaelzer@gmail.com>",
@@ -27,5 +19,10 @@
     "stream",
     "http",
     "ip camera"
+  ],
+  "files": [
+    "index.js",
+    "lib/",
+    "README.md"
   ]
 }
